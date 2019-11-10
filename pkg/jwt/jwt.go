@@ -7,18 +7,17 @@ import (
 	"github.com/SermoDigital/jose/crypto"
 	"github.com/SermoDigital/jose/jws"
 	"log"
+	"reflect"
 	"time"
 )
 
 type AuthClaims struct {
 	UserId     string
-	TokenId    string
 	Gateway    string
 	ClientName string
-	UserAgent string
+	Flags      int64
 	ExpiresAt  time.Time
 }
-
 
 type Authenticator interface {
 	Create(claims *AuthClaims) (string, error)
@@ -26,7 +25,6 @@ type Authenticator interface {
 	Parse(token string) (*AuthClaims, error)
 	Renew(token string, expiresAt time.Time) (string, error)
 }
-
 
 func NewClient(client *Client) Authenticator {
 	a := new(Client)
@@ -54,18 +52,18 @@ func NewClient(client *Client) Authenticator {
 }
 
 type Client struct {
-	PublicKey string
+	PublicKey  string
 	PrivateKey string
 	publicKey  *rsa.PublicKey
 	privateKey *rsa.PrivateKey
 }
+
 func (a *Client) Create(c *AuthClaims) (string, error) {
 	claims := jws.Claims{}
 	claims.Set("userId", c.UserId)
-	claims.Set("tokenId", c.TokenId)
 	claims.Set("gateway", c.Gateway)
-	claims.Set("userAgent", c.UserAgent)
 	claims.Set("clientName", c.ClientName)
+	claims.Set("flags", c.Flags)
 	claims.SetExpiration(c.ExpiresAt)
 	claims.SetIssuedAt(time.Now())
 	j := jws.NewJWT(claims, crypto.SigningMethodRS256)
@@ -89,18 +87,17 @@ func (a *Client) Parse(token string) (*AuthClaims, error) {
 	claims := new(AuthClaims)
 	j, err := jws.ParseJWT([]byte(token))
 	if err != nil {
-		return nil, errors.New("1001 failed parse token, "+ err.Error())
+		return nil, errors.New("1001 failed parse token, " + err.Error())
 	}
 	err = j.Validate(a.publicKey, crypto.SigningMethodRS256)
 	if err != nil {
-		return nil, errors.New("1002 failed validate token, "+ err.Error())
+		return nil, errors.New("1002 failed validate token, " + err.Error())
 	}
 	jwtClaims := j.Claims()
 	claims.UserId = jwtClaims.Get("userId").(string)
-	claims.TokenId = jwtClaims.Get("tokenId").(string)
 	claims.Gateway = jwtClaims.Get("gateway").(string)
-	claims.UserAgent = jwtClaims.Get("userAgent").(string)
 	claims.ClientName = jwtClaims.Get("clientName").(string)
+	claims.Flags = reflect.ValueOf(jwtClaims.Get("flags")).Convert(reflect.TypeOf(int64(0))).Int()
 	claims.ExpiresAt, _ = jwtClaims.Expiration()
 	return claims, nil
 }
