@@ -97,7 +97,9 @@ func (a *Client) Parse(token string) (*AuthClaims, error) {
 	claims.UserId = jwtClaims.Get("userId").(string)
 	claims.Gateway = jwtClaims.Get("gateway").(string)
 	claims.ClientName = jwtClaims.Get("clientName").(string)
-	claims.Flags = reflect.ValueOf(jwtClaims.Get("flags")).Convert(reflect.TypeOf(int64(0))).Int()
+	if flags, ok := jwtClaims.Get("flags").(float64); ok {
+		claims.Flags = reflect.ValueOf(flags).Convert(reflect.TypeOf(int64(0))).Int()
+	}
 	claims.ExpiresAt, _ = jwtClaims.Expiration()
 	return claims, nil
 }
