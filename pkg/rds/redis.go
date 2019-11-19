@@ -85,10 +85,10 @@ func (p *Client) Action(fn func(redis.Conn) error) (err error) {
 	c := p.Get()
 	defer func() {
 		if p := recover(); p != nil {
-			err = c.Close()
+			c.Close()
 			panic(p)
 		} else {
-			err = c.Close()
+			c.Close()
 		}
 	}()
 	err = fn(c)
